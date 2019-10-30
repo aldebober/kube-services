@@ -1,0 +1,38 @@
+---
+read_resources:
+  - 'replicasets'
+  - 'configmaps'
+  - 'persistentvolumeclaims'
+  - 'ingresses'
+  - 'daemonsets'
+  - 'events'
+  - 'replicationcontrollers'
+  - 'statefulsets'
+  - 'pods/log'
+  - 'pods'
+  - 'deployments'
+  - 'jobs'
+
+write_resources:
+  - 'deployments'
+  - 'replicasets'
+  - 'pods'
+  - 'services'
+  - 'jobs'
+  - 'configmaps'
+
+# List of users in teams    
+team_users:
+  - { 'name': 'user1', 'writes': true }
+  - { 'name': 'user2', 'writes': true }
+
+# List of teams
+teams:
+  - 'team'
+
+# base prefixes of ns
+namespaces:
+  - 'prod'
+  - 'preprod'
+
+namespace: ''

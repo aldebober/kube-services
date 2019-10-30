@@ -1,0 +1,51 @@
+---
+
+- name: "Download HAproxy src"
+  get_url:
+    url: "{{ binaries_url }}/source/haproxy-{{ haproxy_version }}.tar.gz"
+    dest: "{{ rpmbuild_build_dir }}/SOURCES"
+    url_username: "probot"
+    url_password: "{{ probot_pw }}"
+    force_basic_auth: yes
+  register: get_url_result
+  until: "'OK' in get_url_result.msg or 'file already exists' in get_url_result.msg"
+  retries: 4
+  delay: "{{ retry_stagger | default(5) }}"
+
+- name: Copy Haproxy default files
+  template:
+    src: "{{ item }}"
+    dest: "{{ rpmbuild_build_dir }}/SOURCES"
+    owner: "{{ rpmbuild_user_name }}"
+  with_items: "{{ haproxy_files }}"
+  tags:
+    - haproxy_build
+
+- name: Copy Haproxy spec
+  template:
+    src: "haproxy.spec.j2"
+    dest: "{{ rpmbuild_build_dir }}/SPECS/haproxy.spec"
+    owner: "{{ rpmbuild_user_name }}"
+  tags:
+    - haproxy_build
+
+- name: "Build RPM package"
+  shell: |-
+        cd "{{ rpmbuild_build_dir }}"
+        rpmbuild -ba SPECS/haproxy.spec
+  ignore_errors: yes
+  run_once: true
+  changed_when: false
+  register: rpm_built
+  tags:
+    - haproxy_build
+
+- name: 'Upload rpm'
+  shell: 'curl  -X "PUT" -T "{{ rpmbuild_build_dir }}/RPMS/x86_64/haproxy-{{ haproxy_version }}-{{ haproxy_release }}.x86_64.rpm" \
+                -u probot:"{{ probot_pw }}" \
+                "{{ binaries_url }}/rpms/haproxy-{{ haproxy_version }}-{{ haproxy_release }}.x86_64.rpm"'
+  register: upload_file
+  when: rpm_built.rc == 0
+
+- debug:
+    msg: " {{ upload_file }}"

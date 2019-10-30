@@ -1,0 +1,138 @@
+---
+
+#- name: 'Sure there isnt old certs'
+#  file:
+#    path: "{{es_home}}/certificate-bundle.zip"
+#    state: absent
+
+- name: 'Sure there isnt old certs'
+  file:
+    path: "/tmp/certs.zip"
+    state: absent
+
+- name: "Copy cert-gen.yml"
+  template:
+    src: 'cert-gen.yml.j2'
+    dest: "{{es_home}}/cert-gen.yml"
+    owner: elasticsearch
+    group: elasticsearch
+    mode: '0644'
+
+#- name: 'Generating certs'
+#  become: yes
+#  command: >
+#   {{es_home}}/bin/elasticsearch-certutil cert --silent --pass '' --ca-pass '' --ca-dn 'CN=*,OU=Ops,O=AS,DC=ASsmth,DC=net' --in cert-gen.yml --keep-ca-key --out certificate-bundle.zip
+#  register: cert_generating
+#  changed_when: False
+#  environment:
+#    ES_PATH_CONF: "{{ conf_dir }}"
+
+- name: 'Generating certs'
+  become: yes
+  command: >
+   {{es_home}}/bin/elasticsearch-certutil cert --silent --ca-pass '' ca --pem --ca-dn 'CN=*,OU=Ops,O=AS,DC=ASsmth,DC=net' --in cert-gen.yml --out /tmp/certs.zip
+  changed_when: False
+  environment:
+    ES_PATH_CONF: "{{ conf_dir }}"
+
+#- name: 'Unarchive'
+#  unarchive:
+#    src: "{{es_home}}/certificate-bundle.zip"
+#    dest: "/tmp"
+#    remote_src: yes
+
+#- name: 'Convert ca to pem format'
+#  become: yes
+#  command: >
+#   openssl  pkcs12 -passin pass:  -in /tmp/ca/ca.p12 -clcerts -nokeys -chain -out ca.pem
+#  changed_when: False
+
+#- name: 'Copy certs to local'
+#  fetch:
+#    src: "{{es_home}}/certificate-bundle.zip"
+#    dest: "/tmp/certificate-bundle.zip"
+#    flat: yes
+#  when: cert_generating.rc == 0
+
+- name: 'Copy certs to local'
+  fetch:
+    src: "/tmp/certs.zip"
+    dest: "/tmp/certs.zip"
+    flat: yes
+#  when: cert_generating.rc == 0
+
+- name: 'Create directory for cert on master'
+  file:
+    path: "{{es_conf_dir}}/master/cert"
+    owner: elasticsearch
+    group: elasticsearch
+    mode: '0544'
+    state: directory
+
+#- name: 'Copy cert to master cert folder'
+#  copy:
+#    src: "/tmp/{{ inventory_hostname }}/{{ inventory_hostname }}.p12"
+#    dest: "{{es_conf_dir}}/master/cert/{{ inventory_hostname }}.p12"
+#    owner: elasticsearch
+#    group: elasticsearch
+#    remote_src: yes
+
+- name: 'Unarchive'
+  unarchive:
+    src: "/tmp/certs.zip"
+    dest: "/tmp"
+    remote_src: yes
+
+- name: 'Copy cert to master cert folder'
+  copy:
+    src: "/tmp/{{ inventory_hostname }}/{{ inventory_hostname }}.key"
+    dest: "{{es_conf_dir}}/master/cert/{{ inventory_hostname }}.key"
+    owner: elasticsearch
+    group: elasticsearch
+    remote_src: yes
+
+- name: 'Copy cert to master cert folder'
+  copy:
+    src: "/tmp/{{ inventory_hostname }}/{{ inventory_hostname }}.crt"
+    dest: "{{es_conf_dir}}/master/cert/{{ inventory_hostname }}.crt"
+    owner: elasticsearch
+    group: elasticsearch
+    remote_src: yes
+
+- name: 'Copy cert to master cert folder'
+  copy:
+    src: "/tmp/ca/ca.crt"
+    dest: "{{es_conf_dir}}/master/cert/ca.crt"
+    owner: elasticsearch
+    group: elasticsearch
+    remote_src: yes
+
+- name: 'Copy cert to master kibana cert folder'
+  copy:
+    src: "/tmp/ca/ca.crt"
+    dest: "/etc/kibana/certs/ca.crt"
+    owner: kibana
+    group: kibana
+    remote_src: yes
+
+- name: 'Update master config'
+  blockinfile:
+    path: "{{es_conf_dir}}/master/elasticsearch.yml"
+    block: |
+        xpack.security.enabled: true
+        xpack.security.transport.ssl.enabled: true
+        xpack.security.transport.ssl.verification_mode: certificate
+        xpack.security.transport.ssl.key: /etc/elasticsearch/master/cert/{{ inventory_hostname }}.key
+        xpack.security.transport.ssl.certificate: /etc/elasticsearch/master/cert/{{ inventory_hostname }}.crt
+        xpack.security.transport.ssl.certificate_authorities: /etc/elasticsearch/master/cert/ca.crt
+        xpack.security.http.ssl.enabled: true
+        xpack.security.http.ssl.key: /etc/elasticsearch/master/cert/{{ inventory_hostname }}.key
+        xpack.security.http.ssl.certificate: /etc/elasticsearch/master/cert/{{ inventory_hostname }}.crt
+        xpack.security.http.ssl.certificate_authorities: /etc/elasticsearch/master/cert/ca.crt
+
+
+- name: 'Start service master_elasticsearch'
+  service:
+    name: master_elasticsearch
+    state: restarted
+

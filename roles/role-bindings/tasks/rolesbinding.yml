@@ -1,0 +1,18 @@
+---
+- name: "create role binding for {{ user_name }}"
+  shell: |
+    /usr/local/bin/kubectl create rolebinding {{ user_name }}-{{ item }}-binding --role={{ item }} --serviceaccount=default:{{ user_name }} -n {{ namespace }} --dry-run -o yaml | /usr/local/bin/kubectl apply -f -
+  ignore_errors: yes
+  run_once: true
+  changed_when: false
+  with_items: "{{ roles }}"
+  when: roles is defined
+
+- name: "create clusterrole binding for {{ user_name }}"
+  shell: |
+    /usr/local/bin/kubectl create clusterrolebinding  {{ user_name }}-{{ item }}-binding --clusterrole={{ item }} --serviceaccount=default:{{ user_name }} --dry-run -o yaml | /usr/local/bin/kubectl apply -f -
+  ignore_errors: yes
+  run_once: true
+  changed_when: false
+  with_items: "{{ clusterroles }}"
+  when: clusterroles is defined

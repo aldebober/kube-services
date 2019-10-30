@@ -1,0 +1,27 @@
+---
+
+- name: 'Namespace'
+  debug:
+    msg: "{{ base_prefix }}-{{ team }}"
+
+- name: "Create {{ base_prefix }}-{{ team }} namespace"
+  shell: |
+    /usr/local/bin/kubectl create ns "{{ base_prefix }}-{{ team }}" --dry-run -o yaml | /usr/local/bin/kubectl apply -f -
+  ignore_errors: yes
+  run_once: true
+  changed_when: false
+
+- name: "Copy roles template"
+  template:
+    src: 'roles.j2'
+    dest: "/tmp/{{ base_prefix }}-{{ team }}-roles.yml"
+    mode: '0644'
+    validate: "python -c 'import yaml,sys;yaml.safe_load(sys.stdin)' < %s"
+  register: roles_file
+
+- name: "Create {{ team }} roles"
+  shell: |
+    /usr/local/bin/kubectl apply -f "/tmp/{{ base_prefix }}-{{ team }}-roles.yml"
+  ignore_errors: yes
+  run_once: true
+  changed_when: false

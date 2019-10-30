@@ -1,0 +1,46 @@
+kind: ClusterRole
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: jenkins-bot-deploy-role
+  labels:
+    jenkins: "true"
+    rbac.authorization.k8s.io/aggregate-subaru: "true"
+rules:
+- apiGroups: [""]
+  resources: ["replicasets", "pods","pods/log", "configmaps", "events"]
+  verbs: ["create", "watch", "get", "list", "patch"]
+- apiGroups: [""]
+  resources: ["namespace"]
+  verbs: ["create", "delete","list","watch"]
+- apiGroups: [""]
+  resources: ["namespaces"]
+  verbs: ["create", "delete","list","watch"]
+- apiGroups: [""]
+  resources: ["services"]
+  verbs: ["create", "patch", "get"]
+- apiGroups: [""]
+  resources: ["secrets"]
+  verbs: ["create", "get"]
+- apiGroups: ["extensions"]
+  resources: ["deployments"]
+  verbs: ["patch", "watch", "get", "list", "create"]
+- apiGroups: ["apps"]
+  resources: ["deployments"]
+  verbs: ["patch", "create", "get"]
+- apiGroups: ["networking.k8s.io"]
+  resources: ["ingresses"]
+  verbs: ["patch", "watch", "get", "list", "create"]
+
+---
+kind: ClusterRoleBinding
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: jenkins-bot-bindings
+subjects:
+- kind: ServiceAccount
+  name: jenkins-bot
+  namespace: default
+roleRef:
+  kind: ClusterRole
+  name: jenkins-bot-deploy-role
+  apiGroup: "rbac.authorization.k8s.io"

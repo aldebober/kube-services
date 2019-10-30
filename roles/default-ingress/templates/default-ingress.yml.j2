@@ -1,0 +1,39 @@
+apiVersion: extensions/v1beta1
+kind: Ingress
+metadata:
+  annotations:
+    certmanager.k8s.io/issuer: ca-{{ namespace }}-issuer
+    ingress.kubernetes.io/ssl-passthrough: "true"
+    kubernetes.io/ingress.allow-http: "false"
+{% if 'kubernetes-dashboard' in service_name %}
+    nginx.ingress.kubernetes.io/configuration-snippet: |
+      rewrite ^({{ path_name }})$ $1/ permanent;
+    nginx.org/ssl-backends: {{ service_name }}
+{% endif %}
+    nginx.ingress.kubernetes.io/rewrite-target: /
+# DEPRECATED    nginx.ingress.kubernetes.io/secure-backends: "true"
+    nginx.ingress.kubernetes.io/backend-protocol: "HTTPS"
+  name: "{{ service_name }}-ingress"
+  namespace: "{{ namespace }}"
+spec:
+  tls:
+  - hosts:
+{% for host in groups['kube-master'] %}
+    - {{ host }}
+{% endfor %}
+{% if inventory_hostname in groups['haproxy'] %}
+{% for host in haproxy %}
+    - {{ host }}
+{% endfor %}
+{% endif %}
+    secretName: "{{ service_name }}-cert"
+  rules:
+{% for host in groups['kube-master'] %}
+  - host: {{ host }}
+    http:
+      paths:
+      - backend:
+          serviceName: "{{ service_name }}"
+          servicePort: 443
+        path: "{{ path_name }}"
+{% endfor %}

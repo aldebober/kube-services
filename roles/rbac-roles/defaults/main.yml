@@ -1,0 +1,31 @@
+---
+read_resources:
+  - 'replicasets'
+  - 'configmaps'
+  - 'persistentvolumeclaims'
+  - 'ingresses'
+  - 'daemonsets'
+  - 'events'
+  - 'replicationcontrollers'
+  - 'statefulsets'
+  - 'pods/log'
+  - 'pods'
+  - 'deployments'
+  - 'jobs'
+  - 'services'
+  - 'cronjobs'
+  - 'nodes'
+
+list_resources:
+  - 'secrets'
+
+write_resources:
+  - 'ingresses'
+  - 'daemonsets'
+  - 'deployments'
+  - 'replicasets'
+  - 'pods'
+  - 'services'
+  - 'cronjobs'
+  - 'jobs'
+  - 'configmaps'

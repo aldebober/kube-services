@@ -1,0 +1,48 @@
+---
+# Create common cluster roles
+- name: "Copy read namespaces ClusterRole template"
+  template:
+    src: 'namespace-reading-clusterrole.yml.j2'
+    dest: "/tmp/namespaces-reading-clusterrole.yml"
+    mode: '0644'
+    validate: "python -c 'import yaml,sys;yaml.safe_load(sys.stdin)' < %s"
+
+- name: "Create namespaces-reading-clusterrole"
+  shell: |
+    /usr/local/bin/kubectl apply -f "/tmp/namespaces-reading-clusterrole.yml"
+  ignore_errors: yes
+  run_once: true
+  changed_when: false
+
+# Create Jenkins account
+- name: "Create Jenkins user"
+  shell: |
+    /usr/local/bin/kubectl -n default create sa jenkins-bot --dry-run -o yaml | /usr/local/bin/kubectl apply -f -
+  ignore_errors: yes
+  run_once: true
+  changed_when: false
+
+- name: "Copy Jenkins roles template"
+  template:
+    src: 'jenkins-sa.yml.j2'
+    dest: "/tmp/jenkins-clusterrole.yml"
+    mode: '0644'
+    validate: "python -c 'import yaml,sys;yaml.safe_load(sys.stdin)' < %s"
+
+- name: "Apply Jenkins template"
+  shell: |
+    /usr/local/bin/kubectl apply -f "/tmp/jenkins-clusterrole.yml"
+  ignore_errors: yes
+  run_once: true
+  changed_when: false
+
+# Teams accounts
+- name: 'Create namespaces and roles for teams'
+  with_items: "{{ teams }}"
+  include_tasks: 'teams.yml'
+  vars:
+    team_name: "{{ name }}"
+    users_list: "{{ name }}"
+  loop_control:
+    loop_var: name
+

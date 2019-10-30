@@ -1,0 +1,54 @@
+kind: Role
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  namespace: {{ namespace }}
+  name: read-role
+  labels:
+    rbac.authorization.k8s.io/aggregate-subaru-read: "true"
+    rbac.authorization.k8s.io/aggregate-subaru: "true"
+rules:
+- apiGroups: ["*"]
+  resources: ["{{ read_resources | join ('\", \"')}}"]
+  verbs: ["get", "watch", "list"]
+---
+
+kind: Role
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  namespace: {{ namespace }}
+  name: list-role
+  labels:
+    rbac.authorization.k8s.io/aggregate-subaru-read: "true"
+    rbac.authorization.k8s.io/aggregate-subaru: "true"
+rules:
+- apiGroups: ["*"]
+  resources: ["{{ list_resources | join ('\", \"')}}"]
+  verbs: ["list"]
+---
+
+kind: Role
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  namespace: {{ namespace }}
+  name: write-role
+  labels:
+    rbac.authorization.k8s.io/aggregate-subaru-write: "true"
+    rbac.authorization.k8s.io/aggregate-subaru: "true"
+rules:
+- apiGroups: ["*"]
+  resources: ["{{ write_resources | join ('\", \"')}}"]
+  verbs: ["create", "update", "patch", "delete"]
+
+---
+
+kind: ClusterRole
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: namespaces-reading-clusterrole
+  labels:
+    rbac.authorization.k8s.io/aggregate-subaru-read: "true"
+    rbac.authorization.k8s.io/aggregate-subaru: "true"
+rules:
+- apiGroups: [""]
+  resources: ["namespaces"]
+  verbs: ["watch", "list", "get"]

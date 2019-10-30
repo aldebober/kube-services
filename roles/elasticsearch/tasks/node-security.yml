@@ -1,0 +1,84 @@
+---
+
+- name: 'Create directory for cert on node '
+  file:
+    path: "{{es_conf_dir}}/node/cert"
+    owner: elasticsearch
+    group: elasticsearch
+    mode: '0544'
+    state: directory
+
+#- name: 'Copy cert to node host'
+#  copy:
+#    src: "/tmp/certificate-bundle.zip"
+#    dest: "/tmp/certificate-bundle.zip"
+
+#- name: 'Unarchive'
+#  unarchive:
+#    src: "/tmp/certificate-bundle.zip"
+#    dest: "/tmp"
+#    remote_src: yes
+
+#- name: 'Copy cert to node host'
+#  copy:
+#    src: "/tmp/{{ inventory_hostname }}/{{ inventory_hostname }}.p12"
+#    dest: "{{es_conf_dir}}/node/cert/{{ inventory_hostname }}.p12"
+#    owner: elasticsearch
+#    group: elasticsearch
+#    remote_src: yes
+
+- name: 'Copy cert to node host'
+  copy:
+    src: "/tmp/certs.zip"
+    dest: "/tmp/certs.zip"
+
+- name: 'Unarchive'
+  unarchive:
+    src: "/tmp/certs.zip"
+    dest: "/tmp"
+    remote_src: yes
+
+- name: 'Copy cert to node host'
+  copy:
+    src: "/tmp/{{ inventory_hostname }}/{{ inventory_hostname }}.crt"
+    dest: "{{es_conf_dir}}/node/cert/{{ inventory_hostname }}.crt"
+    owner: elasticsearch
+    group: elasticsearch
+    remote_src: yes
+
+- name: 'Copy cert to node host'
+  copy:
+    src: "/tmp/{{ inventory_hostname }}/{{ inventory_hostname }}.key"
+    dest: "{{es_conf_dir}}/node/cert/{{ inventory_hostname }}.key"
+    owner: elasticsearch
+    group: elasticsearch
+    remote_src: yes
+
+- name: 'Copy cert to node host'
+  copy:
+    src: "/tmp/ca/ca.crt"
+    dest: "{{es_conf_dir}}/node/cert/ca.crt"
+    owner: elasticsearch
+    group: elasticsearch
+    remote_src: yes
+
+- name: 'Update node config'
+  blockinfile:
+    path: "{{es_conf_dir}}/node/elasticsearch.yml"
+    block: |
+        xpack.security.enabled: true
+        xpack.security.transport.ssl.enabled: true
+        xpack.security.transport.ssl.verification_mode: certificate
+        xpack.security.transport.ssl.key: /etc/elasticsearch/node/cert/{{ inventory_hostname }}.key
+        xpack.security.transport.ssl.certificate: /etc/elasticsearch/node/cert/{{ inventory_hostname }}.crt
+        xpack.security.transport.ssl.certificate_authorities: /etc/elasticsearch/node/cert/ca.crt
+        xpack.security.http.ssl.enabled: true
+        xpack.security.http.ssl.key: /etc/elasticsearch/node/cert/{{ inventory_hostname }}.key
+        xpack.security.http.ssl.certificate: /etc/elasticsearch/node/cert/{{ inventory_hostname }}.crt
+        xpack.security.http.ssl.certificate_authorities: /etc/elasticsearch/node/cert/ca.crt
+
+- name: 'Start service node_elasticsearch'
+  service:
+    name: node_elasticsearch
+    state: restarted
+

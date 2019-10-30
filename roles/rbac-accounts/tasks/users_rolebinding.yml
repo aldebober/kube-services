@@ -1,0 +1,37 @@
+---
+
+- name: rolebindigs
+  debug:
+    msg: "{{ item }}-{{ team }} {{ user_attr.name }}" 
+  with_items: "{{ namespaces }}"
+
+- name: "Create {{ user_attr.name }} user"
+  shell: |
+    /usr/local/bin/kubectl -n default create sa "{{ user_attr.name }}" --dry-run -o yaml | /usr/local/bin/kubectl apply -f -
+  ignore_errors: yes
+  run_once: true
+  changed_when: false
+
+- name: "Create namespace-reading-clusterrole-binding for {{ user_attr.name }} user"
+  shell: |
+    /usr/local/bin/kubectl create clusterrolebinding {{ user_attr.name }}-ns-clusterrrole-binding --clusterrole=namespace-reading-clusterrole --serviceaccount=default:{{ user_attr.name }} --dry-run -o yaml | /usr/local/bin/kubectl apply -f -
+  ignore_errors: yes
+  run_once: true
+  changed_when: false
+
+- name: "create rolebinding {{ user_attr.name }}-write-role-binding"
+  shell: |
+    /usr/local/bin/kubectl create rolebinding {{ user_attr.name }}-write-role-binding --role=write-role-{{ item }} --serviceaccount=default:{{ user_attr.name }} -n {{ item }}-{{ team }} --dry-run -o yaml | /usr/local/bin/kubectl apply -f -
+  ignore_errors: yes
+  run_once: true
+  changed_when: false
+  with_items: "{{ namespaces }}"
+  when: user_attr.writes
+
+- name: "create rolebinding {{ user_attr.name }}-read-role-binding"
+  shell: |
+    /usr/local/bin/kubectl create rolebinding {{ user_attr.name }}-read-role-binding --role=read-role-{{ item }} --serviceaccount=default:{{ user_attr.name }} -n {{ item }}-{{ team }} --dry-run -o yaml | /usr/local/bin/kubectl apply -f -
+  ignore_errors: yes
+  run_once: true
+  changed_when: false
+  with_items: "{{ namespaces }}"

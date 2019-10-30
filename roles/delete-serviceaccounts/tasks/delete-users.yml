@@ -1,0 +1,20 @@
+---
+- name: "Check service account {{ user_name }}"
+  command: |-
+      /usr/local/bin/kubectl get sa {{ user_name }}
+  ignore_errors: yes
+  run_once: true
+  changed_when: false
+  register: user_exist
+  failed_when: "user_exist.rc == 2"
+
+
+- name: "Delete user {{ user_name }}"
+  shell: |-
+      /usr/local/bin/kubectl delete sa {{ user_name }}
+  ignore_errors: yes
+  run_once: true
+  changed_when: false
+  register: removed_user
+  when: "'not found' not in user_exist.stderr"
+

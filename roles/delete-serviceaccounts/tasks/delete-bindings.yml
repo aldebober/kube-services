@@ -1,0 +1,32 @@
+---
+- name: "Get clusterrole bindings for {{ user_name }}"
+  shell: |-
+      /usr/local/bin/kubectl get clusterrolebindings \
+      -o custom-columns='KIND:kind,NAME:metadata.name,SERVICE_ACCOUNTS:subjects[?(@.kind=="ServiceAccount")].name' \
+      |awk '$3=="{{ user_name }}"{print $2}'
+  ignore_errors: yes
+  run_once: true
+  changed_when: false
+  register: cluster_role_bindings
+
+- name: 'Delete clusterrolebindings {{item }} for user {{ user_name }}'
+  shell: |-
+      /usr/local/bin/kubectl delete clusterrolebindings {{ item }}
+  with_items:
+    - "{{ cluster_role_bindings.stdout_lines }}"
+
+- name: 'Get role bindings for {{ user_name }}'
+  shell: |-
+      /usr/local/bin/kubectl get rolebindings --all-namespaces \
+      -o custom-columns='NAMESPACE:metadata.namespace,KIND:kind,NAME:metadata.name,SERVICE_ACCOUNTS:subjects[?(@.kind=="ServiceAccount")].name' \ 
+      |awk '$4=="{{ user_name }}"{print $1"="$3}'
+  ignore_errors: yes
+  run_once: true
+  changed_when: false
+  register: role_bindings
+
+- name: 'Delete rolebindings {{ item }} {{ user_name }}'
+  shell: |-
+      /usr/local/bin/kubectl -n {{ item.split('=')[0] }} delete rolebindings {{ item.split('=')[1] }}
+  with_items:
+    - "{{ role_bindings.stdout_lines }}"

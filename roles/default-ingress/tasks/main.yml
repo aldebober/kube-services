@@ -1,0 +1,13 @@
+---
+
+- name: "Copy dashboard ingress rule file"
+  template:
+    src: "templates/default-ingress.yml.j2"
+    dest: "/tmp/{{ namespace }}-ingress.yml"
+    validate: "python -c 'import yaml,sys;yaml.safe_load(sys.stdin)' < %s"
+
+- name: "Create ingress rule"
+  command: |-
+    /usr/local/bin/kubectl \
+      apply -f "/tmp/{{ namespace }}-ingress.yml"
+  changed_when: false

@@ -1,0 +1,23 @@
+---
+- name: "namespase task"
+  with_items: "{{ namespaces }}"
+  include_tasks: "namespace_roles.yml"
+  vars:
+    base_prefix: "{{ ns_prefix }}"
+    team: "{{ team_name }}"
+  loop_control:
+    loop_var: ns_prefix
+
+  #- name: users
+  #  with_items: "{{ vars[users_list + '_users']}}"
+  #  debug:
+  #    msg: "{{ item.name }}"
+
+- name: "users task"
+  with_items: "{{ vars[users_list + '_users']}}"
+  include_tasks: "users_rolebinding.yml"
+  vars:
+    user_attr: "{{ user }}"
+    team: "{{ team_name }}"
+  loop_control:
+    loop_var: user

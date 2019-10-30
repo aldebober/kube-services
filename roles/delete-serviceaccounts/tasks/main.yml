@@ -1,0 +1,16 @@
+---
+- name: "Delete role and clusterrole bindings for user {{ name }}"
+  with_items: "{{ users }}"
+  include_tasks: 'delete-bindings.yml'
+  vars:
+    user_name: "{{ name }}"
+  loop_control:
+    loop_var: name
+
+- name: "Delete user {{ name }}"
+  with_items: "{{ users }}"
+  include_tasks: 'delete-users.yml'
+  vars:
+    user_name: "{{ name }}"
+  loop_control:
+    loop_var: name

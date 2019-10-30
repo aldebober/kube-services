@@ -1,0 +1,93 @@
+---
+
+- name: Create a bz2 archive of multiple files, rooted at /path
+  archive:
+    path:
+    - /etc/kibana
+    - /etc/elasticsearch
+    dest: /opt/elk_configs.tar.bz2
+    format: bz2
+
+- name: 'Disable shard allocation'
+  uri: 
+     url: "http://localhost:9200/_cluster/settings"
+     method: PUT
+     return_content: yes
+     HEADER_Content-Type: "application/json"
+     body: '{ "persistent": { "cluster.routing.allocation.enable": "none" } }'
+  register: shard_disabled
+
+- name: 'Shard Debug'
+  debug:
+    var: shard_disabled
+
+- name: RedHat - Install Elasticsearch
+  become: yes
+  yum:
+    name: '{{ es_package_name }}{% if es_version is defined and es_version != ""  %}-{{ es_version }}{% endif %}'
+    state: present
+    update_cache: yes
+  when: 'shard_disabled["msg"].find("OK") != -1 and shard_disabled["status"] == 200'
+  register: redhat_elasticsearch_install_from_repo
+  #  notify: restart elasticsearch
+  until: redhat_elasticsearch_install_from_repo.rc == 0
+  retries: 5
+  delay: 10
+  environment:
+    ES_PATH_CONF: "/etc/elasticsearch"
+
+- name: 'Yum Debug'
+  debug:
+    var: redhat_elasticsearch_install_from_repo
+
+- name: 'Check owner'
+  file:
+    path: '/etc/elasticsearch/node/'
+    owner: 'elasticsearch'
+    group: 'elasticsearch'
+    recurse: yes
+
+- name: 'Start service node_elasticsearch'
+  service:
+    name: node_elasticsearch
+    state: restarted
+  when: redhat_elasticsearch_install_from_repo.rc == 0
+
+- name: 'Check status'
+  uri:
+    url: "http://localhost:9200/_cat/nodes"
+    method: GET
+  register: node_status_response
+  until: node_status_response['msg'].find("OK") != -1
+  retries: 5
+  delay: 10
+
+- name: 'Reenable shards'
+  uri:
+    url: "http://localhost:9200/_cluster/settings"
+    method: PUT
+    return_content: yes
+    HEADER_Content-Type: "application/json"
+    body: '{ "persistent": { "cluster.routing.allocation.enable": null } }'
+  register: shard_disabled
+
+- name: 'Check health'
+  uri:
+    url: "http://localhost:9200/_cat/health"
+    method: GET
+    return_content: yes
+  register: node_health_response
+  until: node_health_response['content'].find("green") != -1
+  retries: 10
+  delay: 20
+
+- name: 'Debug'
+  debug:
+    var: node_health_response["content"]
+
+# Find unassigned shards
+# curl -XGET localhost:9200/_cat/shards?h=index,shard,prirep,state,unassigned.reason| grep UNASSIGNED
+# Get explanations
+# curl -XGET localhost:9200/_cluster/allocation/explain?pretty
+# Reenable allocation
+# curl -XPUT 'localhost:9200/_cluster/settings' -H 'Content-Type: application/json' -d '{ "transient": {"cluster.routing.allocation.enable" : "all"}}'

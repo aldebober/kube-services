@@ -1,0 +1,80 @@
+---
+
+- name: Create a bz2 archive of multiple files, rooted at /path
+  archive:
+    path:
+    - /etc/kibana
+    - /etc/elasticsearch
+    dest: /opt/elk_master_configs.tar.bz2
+    format: bz2
+
+- name: RedHat - Install Elasticsearch
+  become: yes
+  yum:
+    name: '{{ es_package_name }}{% if es_version is defined and es_version != ""  %}-{{ es_version }}{% endif %}'
+    state: present
+    update_cache: yes
+  register: redhat_elasticsearch_install_from_repo
+  #  notify: restart elasticsearch
+  until: redhat_elasticsearch_install_from_repo.rc == 0
+  retries: 5
+  delay: 10
+  environment:
+    ES_PATH_CONF: "/etc/elasticsearch"
+
+- name: 'Check owner'
+  file:
+    path: '/etc/elasticsearch/master/'
+    owner: 'elasticsearch'
+    group: 'elasticsearch'
+    recurse: yes
+
+- name: 'Start service master_elasticsearch'
+  service:
+    name: master_elasticsearch
+    state: restarted
+  when: redhat_elasticsearch_install_from_repo.rc == 0
+
+- name: 'Check status'
+  uri:
+    url: "http://localhost:9201/_cat/nodes"
+    method: GET
+    return_content: yes
+  register: master_status_response
+  until: master_status_response['msg'].find("OK") != -1
+  retries: 5
+  delay: 10
+
+- name: 'Debug'
+  debug:
+    var: master_status_response["content"]
+
+- name: Install Kibana
+  become: yes
+  yum:
+    name: 'kibana{% if es_version is defined and es_version != ""  %}-{{ es_version }}{% endif %}'
+    state: present
+    update_cache: yes
+  register: kibana_install_from_repo
+  until: kibana_install_from_repo.rc == 0
+  retries: 5
+  delay: 10
+
+- name: 'Start service kibana'
+  service:
+    name: kibana
+    state: restarted
+  when: redhat_elasticsearch_install_from_repo.rc == 0
+      
+- name: 'Set up index lifecycle management policy'
+  uri:
+     url: "http://localhost:9200/_ilm/policy/filebeat-{{ es_version }}"
+     method: PUT
+     return_content: yes
+     HEADER_Content-Type: "application/json"
+     body: '{ "policy": { "phases": { "hot": { "min_age": "0ms", "actions": {"rollover": {"max_age": "1d","max_size": "10gb"}}}, "warm": { "min_age": "0ms", "actions": { "allocate": { "number_of_replicas": 1, "include": {}, "exclude": {}} }},  "delete": { "min_age": "180d", "actions": {"delete": {} }} } }}'
+  register: policy_retention
+
+# To delete kibana index
+# curl -XDELETE 'http://localhost:9200/.kibana_4'  --header "content-type: application/JSON" -u subaru -p
+#

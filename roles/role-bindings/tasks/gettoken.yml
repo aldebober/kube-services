@@ -1,0 +1,14 @@
+---
+- name: "Get secret {{ user_name }}-token"
+  shell: |-
+      /usr/local/bin/kubectl describe secret \
+      $(kubectl get secret | awk '/^{{ user_name }}/{print $1}') \
+      | awk '$1=="token:"{print $2}'
+  ignore_errors: yes
+  run_once: true
+  changed_when: false
+  register: user_token
+
+- name: "{{ user_name }} token"
+  debug:
+    var: user_token.stdout

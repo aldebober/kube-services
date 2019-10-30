@@ -1,0 +1,17 @@
+---
+- name: "Bind roles for user {{ name }}"
+  with_items: "{{ users }}"
+  include_tasks: 'rolesbinding.yml'
+  vars:
+    user_name: "{{ name }}"
+  loop_control:
+    loop_var: name
+
+- name: "Print token for user {{ name }}"
+  with_items: "{{ users }}"
+  include_tasks: 'gettoken.yml'
+  vars:
+    user_name: "{{ name }}"
+  loop_control:
+    loop_var: name
+

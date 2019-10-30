@@ -1,0 +1,13 @@
+---
+
+kind: ClusterRole
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: namespace-reading-clusterrole
+  labels:
+    rbac.authorization.k8s.io/aggregate-subaru-read: "true"
+    rbac.authorization.k8s.io/aggregate-subaru: "true"
+rules:
+- apiGroups: [""]
+  resources: ["namespaces"]
+  verbs: ["watch", "list", "read"]

@@ -1,0 +1,4 @@
+---
+namespace: "default"
+service_name: "default"
+path_name: "/{{ namespace }}-app"
